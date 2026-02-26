@@ -1,26 +1,32 @@
 # Trenfe Backend con Express + MongoDB
 
-API REST construida con Express y TypeScript, conectada a MongoDB Atlas mediante Mongoose. Gestiona autenticación JWT, usuarios, noticias y tickets para la intranet.
+API REST construida con Express y TypeScript (ejecutada con Deno), conectada a MongoDB Atlas mediante Mongoose. Gestiona autenticacion JWT, usuarios, noticias, tickets y tracking de trenes.
 
 ## Estructura del Proyecto
 
 ```
 /
-├── main.ts                  # Punto de entrada de la aplicación
+├── server.ts                # Punto de entrada de la aplicacion
+├── security.ts              # Middlewares de seguridad (headers, rate limit, guards)
+├── util.ts                  # JWT helpers y utilidades
+├── cache.ts                 # Cache
+├── types.ts                 # Tipos compartidos
 ├── DB/                      # Modelos de base de datos (Mongoose)
 │   ├── news.ts              # Modelo de noticias
 │   ├── tickets.ts           # Modelo de tickets
+│   ├── track.ts             # Modelo de tracking de trenes
 │   └── user.ts              # Modelo de usuarios
 └── routes/                  # Rutas de la API
-    ├── login.ts             # Autenticación — POST /login
-    ├── register.ts          # Registro de usuarios — POST /register
-    ├── token.ts             # Validación y refresco de token — POST /token
+    ├── login.ts             # Autenticacion — POST /login
+    ├── register.ts          # Registro — POST /register
+    ├── token.ts             # Validacion de token — POST /token
     ├── news.ts              # Gestion de noticias — /news
     ├── ticket.ts            # Gestion de tickets — /ticket
-    └── user.ts              # Gestión de usuarios — /user
+    ├── track.ts             # Tracking de trenes — /track
+    └── user.ts              # Gestion de usuarios — /user
 ```
 
-## Instalación
+## Instalacion
 
 1. Clona el repositorio y entra en la carpeta del proyecto
 2. Arranca el servidor:
@@ -29,7 +35,7 @@ API REST construida con Express y TypeScript, conectada a MongoDB Atlas mediante
 deno task start
 ```
 
-3. La API estará disponible en `http://localhost:3000`
+3. La API estara disponible en `http://localhost:3000`
 
 ## Variables de Entorno
 
@@ -40,21 +46,25 @@ MONGO_URI=mongodb+srv://<user>:<pass>@cluster0.mongodb.net/?retryWrites=true&w=m
 PORT=3000
 ADMIN_TOKEN=example-admin-token
 JWT_SECRET=example-jwt-secret
+API_NINJAS_API_KEY=example-api-key
+GOOGLE_API_KEY=example-google-key
 ```
-
-| Variable      | Descripción                                                              |
-|---------------|--------------------------------------------------------------------------|
-| `MONGO_URI`   | Cadena de conexión a MongoDB Atlas. Reemplaza `<user>` y `<pass>`        |
-| `PORT`        | Puerto en el que escucha el servidor (por defecto `3000`)                |
-| `ADMIN_TOKEN` | Token estático para operaciones administrativas protegidas               |
-| `JWT_SECRET`  | Clave secreta usada para firmar y verificar los tokens JWT               |
-
+ _____________________________________________________________________________________
+| Variable              | Descripcion                                                 |
+|-----------------------|-------------------------------------------------------------|
+| `MONGO_URI`           | Cadena de conexion a MongoDB Atlas                          |
+| `PORT`                | Puerto en el que escucha el servidor (por defecto `3000`)   |
+| `ADMIN_TOKEN`         | Token admin                                                 |
+| `JWT_SECRET`          | Clave secreta para firmar JWT                               |
+| `API_NINJAS_API_KEY`  | API key para geolocalizacion                                |
+| `GOOGLE_API_KEY`      | API key usada para IA                                       |
+ -------------------------------------------------------------------------------------
 ## Endpoints de la API
 
-### Autenticación
+### Autenticacion
 
 #### `POST /login`
-Inicia sesión con email y contraseña. Si las credenciales son correctas, devuelve un token JWT en cookie y en el cuerpo de la respuesta.
+Inicia sesion con email y password.
 
 - **Body:**
 ```json
@@ -65,29 +75,30 @@ Inicia sesión con email y contraseña. Si las credenciales son correctas, devue
 { "success": "OK", "userid": "string" }
 ```
 - **Cookie:** `bearer=<token>; Secure; Path=/; SameSite=Strict`
-- **Errores:** `400` si faltan parámetros o el email no tiene `@`, `404` si el usuario no existe o la contraseña es incorrecta, `500` en error interno
+- **Errores:** `400` parametros faltantes, `404` usuario no encontrado, `500` error interno
 
 ---
 
 #### `POST /register`
-Registra un nuevo usuario en el sistema.
+Registra un usuario nuevo.
 
 - **Body:**
 ```json
-{ "email": "string", "password": "string", "name": "string" }
+{ "userid": "string", "name": "string", "email": "string", "password": "string", "coins": "0" }
 ```
 - **Respuesta 200:**
 ```json
-{ "success": "OK" }
+{ "success": "OK", "userid": "string" }
 ```
-- **Errores:** `400` si faltan parámetros o el email no es válido, `409` si el usuario ya existe
+- **Cookie:** `bearer=<token>; Secure; Path=/; SameSite=Strict`
+- **Errores:** `400` parametros faltantes, `500` error interno
 
 ---
 
 ### Token
 
 #### `POST /token`
-Valida un token existente asociado a un email y lo refresca en cookie.
+Valida un token enviado en body y lo refleja en cookie.
 
 - **Body:**
 ```json
@@ -97,13 +108,12 @@ Valida un token existente asociado a un email y lo refresca en cookie.
 ```json
 { "success": "OK", "bearer": "string" }
 ```
-- **Cookie:** `bearer=<token>; Secure; Path=/; SameSite=Strict`
-- **Errores:** `400` si faltan parámetros, `401` si el token es inválido (`Bearer corrupted`), `404` si el usuario no existe
+- **Errores:** `400` faltan parametros, `401` bearer invalido, `404` usuario no encontrado
 
 ---
 
 #### `POST /token/user`
-Extrae los datos del usuario a partir de un token JWT. Usado por el middleware del frontend para proteger rutas.
+Extrae datos de usuario desde el JWT.
 
 - **Body:**
 ```json
@@ -114,47 +124,57 @@ Extrae los datos del usuario a partir de un token JWT. Usado por el middleware d
 {
   "userid": "string",
   "email": "string",
-  "name": "string",
-  "coins": number
+  "coins": "string",
+  "name": "string"
 }
 ```
-- **Cookie:** Refresca automáticamente `bearer` en la respuesta
-- **Errores:** `400` si falta el token, `404` si el usuario no existe, `500` en error interno
+- **Errores:** `400` faltan parametros, `404` usuario no encontrado, `500` error interno
 
 ---
 
 ### Noticias
 
-| Método | Ruta         | Descripción               | Auth       |
-|--------|--------------|---------------------------|------------|
-| GET    | `/news`      | Listar todas las noticias  | No         |
-| GET    | `/news/:id`  | Obtener noticia por ID     | No         |
-| POST   | `/news`      | Crear noticia              | Sí (admin) |
-| PUT    | `/news/:id`  | Actualizar noticia         | Sí (admin) |
-| DELETE | `/news/:id`  | Eliminar noticia           | Sí (admin) |
+| Metodo | Ruta            | Descripcion                | Auth       |
+|--------|-----------------|----------------------------|------------|
+| GET    | `/news`         | Listar noticias            | No         |
+| GET    | `/news/:newid`  | Obtener noticia por ID     | No         |
+| POST   | `/news/create`  | Crear noticia              | Si (admin) |
+| PUT    | `/news`         | Actualizar noticia         | Si (admin) |
+| DELETE | `/news/:newid`  | Eliminar noticia           | Si (admin) |
 
 ---
 
 ### Tickets
 
-| Método | Ruta               | Descripción              | Auth       |
-|--------|--------------------|--------------------------|------------|
-| GET    | `/ticket`          | Listar todos los tickets  | No         |
-| GET    | `/ticket/:id`      | Obtener ticket por ID     | No         |
-| POST   | `/ticket/:id/buy`  | Comprar un ticket         | Sí         |
-| POST   | `/ticket`          | Crear ticket              | Sí (admin) |
-| PUT    | `/ticket/:id`      | Actualizar ticket         | Sí (admin) |
-| DELETE | `/ticket/:id`      | Eliminar ticket           | Sí (admin) |
+| Metodo | Ruta                 | Descripcion                | Auth            |
+|--------|----------------------|----------------------------|-----------------|
+| GET    | `/ticket`            | Listar tickets             | No              |
+| GET    | `/ticket/:ticketid`  | Obtener ticket por ID      | No              |
+| POST   | `/ticket/create`     | Crear ticket               | Si (admin)      |
+| POST   | `/ticket/sell`       | Vender/consumir ticket     | Usuario o admin |
+| PUT    | `/ticket`            | Actualizar ticket          | Si (admin)      |
+| DELETE | `/ticket/:ticketid`  | Eliminar ticket            | Si (admin)      |
+
+---
+
+### Tracking
+
+| Metodo | Ruta                | Descripcion                              | Auth       |
+|--------|---------------------|------------------------------------------|------------|
+| GET    | `/track/:ticketid`  | Obtener posicion/tracking de un ticket   | No         |
+| POST   | `/track/create`     | Crear tracking desde origen/destino      | Si (admin) |
+| DELETE | `/track/:ticketid`  | Eliminar tracking                        | Si (admin) |
 
 ---
 
 ### Usuario
 
-| Método | Ruta        | Descripción                       | Auth       |
-|--------|-------------|-----------------------------------|------------|
-| GET    | `/user/:id` | Obtener datos públicos de usuario | Sí         |
-| PUT    | `/user/:id` | Actualizar datos de usuario       | Sí         |
-| DELETE | `/user/:id` | Eliminar usuario                  | Sí (admin) |
+| Metodo | Ruta           | Descripcion                     | Auth            |
+|--------|----------------|---------------------------------|-----------------|
+| GET    | `/user`        | Listar usuarios                 | Si (admin)      |
+| GET    | `/user/:userid`| Obtener usuario                 | Usuario o admin |
+| PUT    | `/user`        | Actualizar usuario              | Usuario o admin |
+| DELETE | `/user/:userid`| Eliminar usuario                | Usuario o admin |
 
 ---
 
@@ -163,64 +183,88 @@ Extrae los datos del usuario a partir de un token JWT. Usado por el middleware d
 ### Usuario (`DB/user.ts`)
 ```typescript
 {
-  userid: string,    // Identificador único generado internamente
-  name: string,      // Nombre del usuario
-  email: string,     // Email (único)
-  password: string,  // Hash bcrypt de la contraseña
-  coins: number      // Saldo o créditos del usuario
+  userid: string,
+  name: string,
+  email: string,
+  password: string,
+  coins: string,
+  intentos: number
 }
 ```
 
 ### Noticia (`DB/news.ts`)
 ```typescript
 {
-  id: string,
-  titulo: string,
-  contenido: string,
-  categoria: "general" | "tecnologia" | "recursos_humanos" | "eventos",
-  fecha: string      // ISO 8601
+  newid: string,
+  title: string,
+  image: string,
+  content: string,
+  date: string
 }
 ```
 
 ### Ticket (`DB/tickets.ts`)
 ```typescript
 {
-  id: string,
-  titulo: string,
-  descripcion: string,
-  precio: number,
-  disponibles: number,
-  fecha: string      // ISO 8601
+  ticketid: string,
+  origin: string,
+  destination: string,
+  date: string,
+  price: string,
+  available: number
+}
+```
+
+### Tracking (`DB/track.ts`)
+```typescript
+{
+  ticketid: string,
+  name: string,
+  reverse: boolean,
+  OriginX: number,
+  OriginY: number,
+  DestinationX: number,
+  DestinationY: number,
+  ActualX: number,
+  ActualY: number,
+  speed: number
 }
 ```
 
 ## Seguridad
 
-- Las contraseñas se almacenan hasheadas con **bcrypt**
-- Los tokens se firman con **JWT** usando `JWT_SECRET`
-- El token se transmite en una cookie con flags `Secure`, `Path=/` y `SameSite=Strict`
-- Las rutas de administración están protegidas con `ADMIN_TOKEN`
-- La validación del token se centraliza en `POST /token/user`, que es el endpoint que consume el middleware del frontend en cada petición protegida
+- Passwords hasheadas con `bcryptjs`
+- JWT firmado con `JWT_SECRET`
+- Cookie `bearer` con `Secure`, `Path=/`, `SameSite=Strict`
+- Endpoints administrativos protegidos por `ADMIN_TOKEN`
+- Headers de seguridad via `helmet`
+- Rate limit global via `express-rate-limit`
+- Guard global de peticiones:
+  - Bloqueo de payloads XSS (`<script ...>`)
+  - Bloqueo de patrones de RCE en campos sensibles (`cmd`, `exec`, etc.)
+  - Validacion SSRF en campos URL (`url`, `callback`, `webhook`, etc.)
+  - Sanitizacion de `req.body` y filtro de claves tipo NoSQL injection (`$`, `.`)
 
-## Flujo de Autenticación
+## Flujo de Autenticacion
 
 ```
 Cliente                          Backend                        MongoDB
-  │                                 │                               │
-  ├─── POST /login ────────────────>│                               │
-  │    { email, password }          ├── User.findOne({ email }) ───>│
-  │                                 │<──────────────────────────────┤
-  │                                 ├── bcrypt.compare()            │
-  │                                 ├── createJWT({ userid })       │
-  │<─── 200 + cookie bearer ────────┤                               │
-  │                                 │                               │
-  ├─── POST /token/user ───────────>│                               │
-  │    { bearer }                   ├── getuserJWT(token)           │
-  │                                 ├── User.findOne({ userid }) ──>│
-  │<─── 200 { userid, email, ... } ─┤                               │
+  |                                 |                               |
+  |--- POST /login ---------------->|                               |
+  |    { email, password }          |--- User.findOne({ email }) -->|
+  |                                 |<------------------------------|
+  |                                 |--- bcrypt.compare()           |
+  |                                 |--- createJWT({ userid })      |
+  |<-- 200 + cookie bearer ---------|                               |
+  |                                 |                               |
+  |--- POST /token/user ----------->|                               |
+  |    { bearer }                   |--- getuserJWT(token)          |
+  |                                 |--- User.findOne({ userid }) -->
+  |<-- 200 { userid, email, ... } --|                               |
 ```
 
 ## Notas
 
-- Asegúrate de configurar CORS correctamente si el frontend está en un dominio distinto
-- Considera añadir rate limit en los endpoints `/login` y `/register` 
+- Si frontend y backend van en dominios distintos, configura CORS explicitamente
+- Ajusta el rate limit segun entorno (desarrollo vs produccion)
+
