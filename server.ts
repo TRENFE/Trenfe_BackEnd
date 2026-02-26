@@ -10,7 +10,12 @@ import cookieParser from "cookie-parser";
 import tokenRoutes from "./routes/token.ts";
 import trackRoutes from "./routes/track.ts";
 import { updateTrainPositions } from "./util.ts";
-import {apiRateLimiter,requestSecurityGuards,securityHeaders} from "./security.ts";
+import {
+  apiRateLimiter,
+  cacheHeaders,
+  requestSecurityGuards,
+  securityHeaders,
+} from "./security.ts";
 
 dotenv.config();
 
@@ -21,6 +26,7 @@ const mongoUri = Deno.env.get("MONGO_URI") || "";
 app.disable("x-powered-by"); // Disable for black-box security
 app.use(securityHeaders); // Global security headers
 app.use(apiRateLimiter); // Global rate limiter
+app.use(cacheHeaders); // Global cache-control policy
 app.use(cookieParser());
 app.use(express.json({ limit: "16kb" })); // Limit JSON body size to prevent DoS
 app.use(express.urlencoded({ extended: false, limit: "16kb" })); // Limit URL-encoded body size
@@ -38,8 +44,8 @@ mongoose.connect(mongoUri)
   .then(() => {
     console.log("Conectado a MongoDB");
     app.listen(port, () => console.log(`Servidor en http://localhost:${port}`));
-    
-    //Simulate train movement
+
+    // Simulate train movement
     updateTrainPositions();
     setInterval(updateTrainPositions, 1 * 60 * 1000);
   })

@@ -27,6 +27,8 @@ const RCE_FIELD_NAMES = ["cmd", "command", "exec", "script", "shell"];
 const SHELL_META = /[;&|`$<>\\]/;
 const CONTROL_CHARS = /[\u0000-\u001F\u007F]/g;
 
+const PUBLIC_CACHE_PREFIXES = ["/news", "/ticket", "/track"];
+
 const containsScriptTag = (input: string): boolean => /<\s*script\b/i.test(input);
 
 // String clean
@@ -100,7 +102,6 @@ const validateOutboundUrl = (rawUrl: string): boolean => {
   }
 };
 
-
 export const securityHeaders = helmet({
   contentSecurityPolicy: false,
   crossOriginResourcePolicy: { policy: "same-site" },
@@ -114,6 +115,26 @@ export const apiRateLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many requests" },
 });
+
+// Response cache policy
+export const cacheHeaders = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
+  const isPublicGet = req.method === "GET" &&
+    PUBLIC_CACHE_PREFIXES.some((prefix) => req.path.startsWith(prefix));
+
+  if (isPublicGet) {
+    // Short browser/CDN cache for public read endpoints.
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=30");
+  } else {
+    // Sensitive/authenticated/mutation responses should never be cached.
+    res.setHeader("Cache-Control", "no-store");
+  }
+
+  next();
+};
 
 // Global Protection
 export const requestSecurityGuards = (
