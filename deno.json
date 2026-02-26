@@ -2,7 +2,7 @@
   "compilerOptions": {
     "strict": true,
     "target": "ES2022",
-    "module": "ESNext",
+    "module": "NodeNext",
     "moduleResolution": "NodeNext"
   },
   "tasks": {
@@ -12,8 +12,10 @@
     "cookie-parser": "npm:cookie-parser@^1.4.7",
     "dotenv": "npm:dotenv@^17.2.3",
     "express": "npm:express@^5.1.0",
+    "express-rate-limit": "npm:express-rate-limit@^8.2.1",
+    "helmet": "npm:helmet@^8.1.0",
     "mongoose": "npm:mongoose@^8.19.1",
     "bcryptjs": "npm:bcryptjs",
-    "jose":"npm:jose@^6.1.0"
+    "jose": "npm:jose@^6.1.0"
   }
 }

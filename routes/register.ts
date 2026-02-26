@@ -1,10 +1,10 @@
 import express, { Request, Response } from "express";
 import  bcrypt from "bcryptjs";
 import { User } from "../DB/user.ts";
-import {createJWT} from "../util.ts"
+import {createJWT} from "../auth.ts"
 
 const router = express.Router();
-//doc
+
 router.post("/", async (req: Request, res: Response) => {
     try {
         if(req.body.userid==null || req.body.name==null || req.body.email==null|| req.body.password==null){

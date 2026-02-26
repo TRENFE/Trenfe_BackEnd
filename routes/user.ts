@@ -2,11 +2,11 @@ import express, { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { User } from "../DB/user.ts";
 import {  UserType } from "../types.ts";
-import { checkAuth } from "../util.ts";
+import { checkAuth } from "../auth.ts";
 
 const router = express.Router();
 
-//doc
+
 router.get("/", async (req: Request, res: Response) => {
   try {
     if (
@@ -22,7 +22,7 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-//doc
+
 router.get("/:userid", async (req: Request, res: Response) => {
   try {
     const userid = req.params.userid;
@@ -49,7 +49,7 @@ router.get("/:userid", async (req: Request, res: Response) => {
   }
 });
 
-//doc
+
 router.delete("/:userid", async (req: Request, res: Response) => {
   try {
     const userid = req.params.userid;
@@ -74,7 +74,7 @@ router.delete("/:userid", async (req: Request, res: Response) => {
   }
 });
 
-//doc
+
 router.put("/", async (req: Request, res: Response) => {
   try {
     const userid = req.body.userid;

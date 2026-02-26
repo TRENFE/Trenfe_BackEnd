@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import { User } from "../DB/user.ts";
 import { UserType } from "../types.ts";
-import { checkAuth,getuserJWT } from "../util.ts";
+import { checkAuth,getuserJWT } from "../auth.ts";
 
 const router = express.Router();
 
