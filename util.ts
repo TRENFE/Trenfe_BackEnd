@@ -5,6 +5,7 @@ Auxiliary functions for backend operations
 */
 
 import { Tracking } from "./DB/track.ts";
+import { clearCache } from "./cache.ts";
 import { TrackingType } from "./types.ts";
 
 //Check if train is near Destination
@@ -38,8 +39,10 @@ export const updateTrainPositions = async () => {
         train.ActualY += train.speed * (train.DestinationY - train.OriginY);
       }
       await train.save();
+      clearCache(`track:${train.ticketid}`);
     }
 
+    clearCache("track:all");
     console.log(`Posiciones actualizadas: ${trains.length} trenes procesados.`);
   } catch (err: Error | any) {
     console.error("Error updating train positions:", err);

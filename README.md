@@ -7,9 +7,10 @@ API REST construida con Express y TypeScript (ejecutada con Deno), conectada a M
 ```
 /
 ├── server.ts                # Punto de entrada de la aplicacion
-├── security.ts              # Middlewares de seguridad (headers, rate limit, guards)
+├── security.ts              # Middlewares de seguridad + cache headers
 ├── util.ts                  # JWT helpers y utilidades
-├── cache.ts                 # Cache
+├── auth.ts                  # Helpers de autorizacion
+├── cache.ts                 # Cache en memoria
 ├── types.ts                 # Tipos compartidos
 ├── DB/                      # Modelos de base de datos (Mongoose)
 │   ├── news.ts              # Modelo de noticias
@@ -49,16 +50,16 @@ JWT_SECRET=example-jwt-secret
 API_NINJAS_API_KEY=example-api-key
 GOOGLE_API_KEY=example-google-key
 ```
- _____________________________________________________________________________________
-| Variable              | Descripcion                                                 |
-|-----------------------|-------------------------------------------------------------|
-| `MONGO_URI`           | Cadena de conexion a MongoDB Atlas                          |
-| `PORT`                | Puerto en el que escucha el servidor (por defecto `3000`)   |
-| `ADMIN_TOKEN`         | Token admin                                                 |
-| `JWT_SECRET`          | Clave secreta para firmar JWT                               |
-| `API_NINJAS_API_KEY`  | API key para geolocalizacion                                |
-| `GOOGLE_API_KEY`      | API key usada para IA                                       |
- -------------------------------------------------------------------------------------
+
+| Variable             | Descripcion |
+|----------------------|-------------|
+| `MONGO_URI`          | Cadena de conexion a MongoDB Atlas |
+| `PORT`               | Puerto en el que escucha el servidor (por defecto `3000`) |
+| `ADMIN_TOKEN`        | Token estatico para operaciones administrativas |
+| `JWT_SECRET`         | Clave secreta para firmar/verificar JWT |
+| `API_NINJAS_API_KEY` | API key para geolocalizacion en `/track/create` |
+| `GOOGLE_API_KEY`     | API key para utilidades IA (`sendAIPrompt`) |
+
 ## Endpoints de la API
 
 ### Autenticacion
@@ -75,7 +76,7 @@ Inicia sesion con email y password.
 { "success": "OK", "userid": "string" }
 ```
 - **Cookie:** `bearer=<token>; Secure; Path=/; SameSite=Strict`
-- **Errores:** `400` parametros faltantes, `404` usuario no encontrado, `500` error interno
+- **Errores:** `400` parametros faltantes, `404` usuario no encontrado/credenciales invalidas, `429` rate limit, `500` error interno
 
 ---
 
@@ -91,7 +92,6 @@ Registra un usuario nuevo.
 { "success": "OK", "userid": "string" }
 ```
 - **Cookie:** `bearer=<token>; Secure; Path=/; SameSite=Strict`
-- **Errores:** `400` parametros faltantes, `500` error interno
 
 ---
 
@@ -108,12 +108,11 @@ Valida un token enviado en body y lo refleja en cookie.
 ```json
 { "success": "OK", "bearer": "string" }
 ```
-- **Errores:** `400` faltan parametros, `401` bearer invalido, `404` usuario no encontrado
 
 ---
 
 #### `POST /token/user`
-Extrae datos de usuario desde el JWT.
+Extrae datos de usuario desde JWT.
 
 - **Body:**
 ```json
@@ -128,55 +127,52 @@ Extrae datos de usuario desde el JWT.
   "name": "string"
 }
 ```
-- **Errores:** `400` faltan parametros, `404` usuario no encontrado, `500` error interno
 
 ---
 
 ### Noticias
 
-| Metodo | Ruta            | Descripcion                | Auth       |
-|--------|-----------------|----------------------------|------------|
-| GET    | `/news`         | Listar noticias            | No         |
-| GET    | `/news/:newid`  | Obtener noticia por ID     | No         |
-| POST   | `/news/create`  | Crear noticia              | Si (admin) |
-| PUT    | `/news`         | Actualizar noticia         | Si (admin) |
-| DELETE | `/news/:newid`  | Eliminar noticia           | Si (admin) |
+| Metodo | Ruta           | Descripcion            | Auth       |
+|--------|----------------|------------------------|------------|
+| GET    | `/news`        | Listar noticias        | No         |
+| GET    | `/news/:newid` | Obtener noticia por ID | No         |
+| POST   | `/news/create` | Crear noticia          | Si (admin) |
+| PUT    | `/news`        | Actualizar noticia     | Si (admin) |
+| DELETE | `/news/:newid` | Eliminar noticia       | Si (admin) |
 
 ---
 
 ### Tickets
 
-| Metodo | Ruta                 | Descripcion                | Auth            |
-|--------|----------------------|----------------------------|-----------------|
-| GET    | `/ticket`            | Listar tickets             | No              |
-| GET    | `/ticket/:ticketid`  | Obtener ticket por ID      | No              |
-| POST   | `/ticket/create`     | Crear ticket               | Si (admin)      |
-| POST   | `/ticket/sell`       | Vender/consumir ticket     | Usuario o admin |
-| PUT    | `/ticket`            | Actualizar ticket          | Si (admin)      |
-| DELETE | `/ticket/:ticketid`  | Eliminar ticket            | Si (admin)      |
+| Metodo | Ruta                | Descripcion            | Auth            |
+|--------|---------------------|------------------------|-----------------|
+| GET    | `/ticket`           | Listar tickets         | No              |
+| GET    | `/ticket/:ticketid` | Obtener ticket por ID  | No              |
+| POST   | `/ticket/create`    | Crear ticket           | Si (admin)      |
+| POST   | `/ticket/sell`      | Vender/consumir ticket | Usuario o admin |
+| PUT    | `/ticket`           | Actualizar ticket      | Si (admin)      |
+| DELETE | `/ticket/:ticketid` | Eliminar ticket        | Si (admin)      |
 
 ---
 
 ### Tracking
 
-| Metodo | Ruta                | Descripcion                              | Auth       |
-|--------|---------------------|------------------------------------------|------------|
-| GET    | `/track/:ticketid`  | Obtener posicion/tracking de un ticket   | No         |
-| POST   | `/track/create`     | Crear tracking desde origen/destino      | Si (admin) |
-| DELETE | `/track/:ticketid`  | Eliminar tracking                        | Si (admin) |
+| Metodo | Ruta               | Descripcion                         | Auth       |
+|--------|--------------------|-------------------------------------|------------|
+| GET    | `/track/:ticketid` | Obtener posicion/tracking del tren  | No         |
+| POST   | `/track/create`    | Crear tracking origen-destino       | Si (admin) |
+| DELETE | `/track/:ticketid` | Eliminar tracking                   | Si (admin) |
 
 ---
 
 ### Usuario
 
-| Metodo | Ruta           | Descripcion                     | Auth            |
-|--------|----------------|---------------------------------|-----------------|
-| GET    | `/user`        | Listar usuarios                 | Si (admin)      |
-| GET    | `/user/:userid`| Obtener usuario                 | Usuario o admin |
-| PUT    | `/user`        | Actualizar usuario              | Usuario o admin |
-| DELETE | `/user/:userid`| Eliminar usuario                | Usuario o admin |
-
----
+| Metodo | Ruta           | Descripcion        | Auth            |
+|--------|----------------|--------------------|-----------------|
+| GET    | `/user`        | Listar usuarios    | Si (admin)      |
+| GET    | `/user/:userid`| Obtener usuario    | Usuario o admin |
+| PUT    | `/user`        | Actualizar usuario | Usuario o admin |
+| DELETE | `/user/:userid`| Eliminar usuario   | Usuario o admin |
 
 ## Modelos de Datos
 
@@ -243,7 +239,10 @@ Extrae datos de usuario desde el JWT.
   - Bloqueo de payloads XSS (`<script ...>`)
   - Bloqueo de patrones de RCE en campos sensibles (`cmd`, `exec`, etc.)
   - Validacion SSRF en campos URL (`url`, `callback`, `webhook`, etc.)
-  - Sanitizacion de `req.body` y filtro de claves tipo NoSQL injection (`$`, `.`)
+  - Sanitizacion de `req.body` y filtro de claves NoSQL injection (`$`, `.`)
+- Politica de cache (`Cache-Control`) en middleware global:
+  - `GET /news`, `GET /ticket`, `GET /track`: `public, max-age=60, stale-while-revalidate=30`
+  - Resto de respuestas: `no-store`
 
 ## Flujo de Autenticacion
 
@@ -266,5 +265,5 @@ Cliente                          Backend                        MongoDB
 ## Notas
 
 - Si frontend y backend van en dominios distintos, configura CORS explicitamente
-- Ajusta el rate limit segun entorno (desarrollo vs produccion)
-
+- Ajusta el rate limit y TTL de cache por entorno (dev/prod)
+- Para entornos con CDN, puedes aumentar `max-age` en `/news` y reducirlo en `/track`

@@ -27,6 +27,23 @@ router.get("/:ticketid", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/", async (_req: Request, res: Response) => {
+  try {
+    const cached = getCache("track:all");
+    if (cached) return res.status(200).json(cached);
+
+    const train: TrackingType[] | null = await Tracking.find()
+      .select("-__v -_id");
+    if (!train || train.length === 0) {
+      return res.status(404).json({ error: "Train not found" });
+    }
+    setCache("track:all", train, 60);
+    res.status(200).json(train);
+  } catch (_err: Error | any) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 router.delete("/:ticketid", async (req: Request, res: Response) => {
   try {
     if (
@@ -46,6 +63,7 @@ router.delete("/:ticketid", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Train not deleted" });
     }
     clearCache(`track:${ticketid}`);
+    clearCache("track:all");
     res.status(200).json(train);
   } catch (_err: Error | any) {
     res.status(500).json({ error: "Internal Server Error" });
@@ -116,6 +134,7 @@ router.post("/create", async (req: Request, res: Response) => {
     });
     await newTrain.save();
     setCache(`track:${ticketid}`, newTrain, 60);
+    clearCache("track:all");
     res.status(201).json(newTrain);
   } catch (_err: Error | any) {
     res.status(500).json({ error: "Internal Server Error" });

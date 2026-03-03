@@ -116,7 +116,7 @@ export const apiRateLimiter = rateLimit({
   message: { error: "Too many requests" },
 });
 
-// Response cache policy
+// Cache
 export const cacheHeaders = (
   req: Request,
   res: Response,
@@ -126,13 +126,10 @@ export const cacheHeaders = (
     PUBLIC_CACHE_PREFIXES.some((prefix) => req.path.startsWith(prefix));
 
   if (isPublicGet) {
-    // Short browser/CDN cache for public read endpoints.
     res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=30");
   } else {
-    // Sensitive/authenticated/mutation responses should never be cached.
     res.setHeader("Cache-Control", "no-store");
   }
-
   next();
 };
 
