@@ -1,269 +1,98 @@
-# Trenfe Backend con Express + MongoDB
+# Trenfe BackEnd
 
-API REST construida con Express y TypeScript (ejecutada con Deno), conectada a MongoDB Atlas mediante Mongoose. Gestiona autenticacion JWT, usuarios, noticias, tickets y tracking de trenes.
+API REST de Trenfe construida con Express + TypeScript sobre Deno, conectada a
+MongoDB con Mongoose.
 
-## Estructura del Proyecto
+## Estado actual
 
+- `deno check server.ts`: OK (aparece warning no bloqueante por `target` en
+  `deno.json`).
+- Proyecto operativo para autenticación, usuarios, noticias, tickets y tracking.
+
+## Stack
+
+- Deno
+- Express
+- Mongoose (MongoDB)
+- JWT (`jose`)
+- Seguridad (`helmet`, rate-limit, guards de payload)
+
+## Estructura
+
+- `server.ts`: bootstrap y montaje de rutas.
+- `security.ts`: headers, rate limit, cache-control, guards anti XSS/SSRF/NoSQL
+  injection.
+- `auth.ts`: autorización admin/usuario.
+- `util.ts`: utilidades JWT y helpers.
+- `DB/`: modelos (`user`, `news`, `tickets`, `track`).
+- `routes/`: endpoints de negocio.
+
+## Variables de entorno
+
+```env
+MONGO_URI=
+PORT=3000
+ADMIN_TOKEN=
+JWT_SECRET=
+API_NINJAS_API_KEY=
+GOOGLE_API_KEY=
 ```
-/
-├── server.ts                # Punto de entrada de la aplicacion
-├── security.ts              # Middlewares de seguridad + cache headers
-├── util.ts                  # JWT helpers y utilidades
-├── auth.ts                  # Helpers de autorizacion
-├── cache.ts                 # Cache en memoria
-├── types.ts                 # Tipos compartidos
-├── DB/                      # Modelos de base de datos (Mongoose)
-│   ├── news.ts              # Modelo de noticias
-│   ├── tickets.ts           # Modelo de tickets
-│   ├── track.ts             # Modelo de tracking de trenes
-│   └── user.ts              # Modelo de usuarios
-└── routes/                  # Rutas de la API
-    ├── login.ts             # Autenticacion — POST /login
-    ├── register.ts          # Registro — POST /register
-    ├── token.ts             # Validacion de token — POST /token
-    ├── news.ts              # Gestion de noticias — /news
-    ├── ticket.ts            # Gestion de tickets — /ticket
-    ├── track.ts             # Tracking de trenes — /track
-    └── user.ts              # Gestion de usuarios — /user
-```
 
-## Instalacion
-
-1. Clona el repositorio y entra en la carpeta del proyecto
-2. Arranca el servidor:
+## Ejecución
 
 ```bash
 deno task start
 ```
 
-3. La API estara disponible en `http://localhost:3000`
+Puerto por defecto: `3000`.
 
-## Variables de Entorno
+## Endpoints principales
 
-Configura los siguientes valores antes de arrancar:
+### Auth
 
-```env
-MONGO_URI=mongodb+srv://<user>:<pass>@cluster0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
-PORT=3000
-ADMIN_TOKEN=example-admin-token
-JWT_SECRET=example-jwt-secret
-API_NINJAS_API_KEY=example-api-key
-GOOGLE_API_KEY=example-google-key
-```
-
-| Variable             | Descripcion |
-|----------------------|-------------|
-| `MONGO_URI`          | Cadena de conexion a MongoDB Atlas |
-| `PORT`               | Puerto en el que escucha el servidor (por defecto `3000`) |
-| `ADMIN_TOKEN`        | Token estatico para operaciones administrativas |
-| `JWT_SECRET`         | Clave secreta para firmar/verificar JWT |
-| `API_NINJAS_API_KEY` | API key para geolocalizacion en `/track/create` |
-| `GOOGLE_API_KEY`     | API key para utilidades IA (`sendAIPrompt`) |
-
-## Endpoints de la API
-
-### Autenticacion
-
-#### `POST /login`
-Inicia sesion con email y password.
-
-- **Body:**
-```json
-{ "email": "string", "password": "string" }
-```
-- **Respuesta 200:**
-```json
-{ "success": "OK", "userid": "string" }
-```
-- **Cookie:** `bearer=<token>; Secure; Path=/; SameSite=Strict`
-- **Errores:** `400` parametros faltantes, `404` usuario no encontrado/credenciales invalidas, `429` rate limit, `500` error interno
-
----
-
-#### `POST /register`
-Registra un usuario nuevo.
-
-- **Body:**
-```json
-{ "userid": "string", "name": "string", "email": "string", "password": "string", "coins": "0" }
-```
-- **Respuesta 200:**
-```json
-{ "success": "OK", "userid": "string" }
-```
-- **Cookie:** `bearer=<token>; Secure; Path=/; SameSite=Strict`
-
----
+- `POST /login`
+- `POST /login/google`
+- `POST /register`
 
 ### Token
 
-#### `POST /token`
-Valida un token enviado en body y lo refleja en cookie.
-
-- **Body:**
-```json
-{ "bearer": "string", "email": "string" }
-```
-- **Respuesta 200:**
-```json
-{ "success": "OK", "bearer": "string" }
-```
-
----
-
-#### `POST /token/user`
-Extrae datos de usuario desde JWT.
-
-- **Body:**
-```json
-{ "bearer": "string" }
-```
-- **Respuesta 200:**
-```json
-{
-  "userid": "string",
-  "email": "string",
-  "coins": "string",
-  "name": "string"
-}
-```
-
----
+- `POST /token`
+- `POST /token/user`
 
 ### Noticias
 
-| Metodo | Ruta           | Descripcion            | Auth       |
-|--------|----------------|------------------------|------------|
-| GET    | `/news`        | Listar noticias        | No         |
-| GET    | `/news/:newid` | Obtener noticia por ID | No         |
-| POST   | `/news/create` | Crear noticia          | Si (admin) |
-| PUT    | `/news`        | Actualizar noticia     | Si (admin) |
-| DELETE | `/news/:newid` | Eliminar noticia       | Si (admin) |
-
----
+- `GET /news`
+- `GET /news/:newid`
+- `POST /news/create` (admin)
+- `PUT /news` (admin)
+- `DELETE /news/:newid` (admin)
 
 ### Tickets
 
-| Metodo | Ruta                | Descripcion            | Auth            |
-|--------|---------------------|------------------------|-----------------|
-| GET    | `/ticket`           | Listar tickets         | No              |
-| GET    | `/ticket/:ticketid` | Obtener ticket por ID  | No              |
-| POST   | `/ticket/create`    | Crear ticket           | Si (admin)      |
-| POST   | `/ticket/sell`      | Vender/consumir ticket | Usuario o admin |
-| PUT    | `/ticket`           | Actualizar ticket      | Si (admin)      |
-| DELETE | `/ticket/:ticketid` | Eliminar ticket        | Si (admin)      |
-
----
+- `GET /ticket`
+- `GET /ticket/:ticketid`
+- `POST /ticket/create` (admin)
+- `POST /ticket/sell` (usuario/admin)
+- `PUT /ticket` (admin)
+- `DELETE /ticket/:ticketid` (admin)
 
 ### Tracking
 
-| Metodo | Ruta               | Descripcion                         | Auth       |
-|--------|--------------------|-------------------------------------|------------|
-| GET    | `/track/:ticketid` | Obtener posicion/tracking del tren  | No         |
-| POST   | `/track/create`    | Crear tracking origen-destino       | Si (admin) |
-| DELETE | `/track/:ticketid` | Eliminar tracking                   | Si (admin) |
+- `GET /track`
+- `GET /track/:ticketid`
+- `POST /track/create` (admin)
+- `DELETE /track/:ticketid` (admin)
 
----
+### Usuarios
 
-### Usuario
+- `GET /user` (admin)
+- `GET /user/:userid` (usuario/admin)
+- `PUT /user` (usuario/admin)
+- `DELETE /user/:userid` (usuario/admin)
 
-| Metodo | Ruta           | Descripcion        | Auth            |
-|--------|----------------|--------------------|-----------------|
-| GET    | `/user`        | Listar usuarios    | Si (admin)      |
-| GET    | `/user/:userid`| Obtener usuario    | Usuario o admin |
-| PUT    | `/user`        | Actualizar usuario | Usuario o admin |
-| DELETE | `/user/:userid`| Eliminar usuario   | Usuario o admin |
+## Seguridad aplicada
 
-## Modelos de Datos
-
-### Usuario (`DB/user.ts`)
-```typescript
-{
-  userid: string,
-  name: string,
-  email: string,
-  password: string,
-  coins: string,
-  intentos: number
-}
-```
-
-### Noticia (`DB/news.ts`)
-```typescript
-{
-  newid: string,
-  title: string,
-  image: string,
-  content: string,
-  date: string
-}
-```
-
-### Ticket (`DB/tickets.ts`)
-```typescript
-{
-  ticketid: string,
-  origin: string,
-  destination: string,
-  date: string,
-  price: string,
-  available: number
-}
-```
-
-### Tracking (`DB/track.ts`)
-```typescript
-{
-  ticketid: string,
-  name: string,
-  reverse: boolean,
-  OriginX: number,
-  OriginY: number,
-  DestinationX: number,
-  DestinationY: number,
-  ActualX: number,
-  ActualY: number,
-  speed: number
-}
-```
-
-## Seguridad
-
-- Passwords hasheadas con `bcryptjs`
-- JWT firmado con `JWT_SECRET`
-- Cookie `bearer` con `Secure`, `Path=/`, `SameSite=Strict`
-- Endpoints administrativos protegidos por `ADMIN_TOKEN`
-- Headers de seguridad via `helmet`
-- Rate limit global via `express-rate-limit`
-- Guard global de peticiones:
-  - Bloqueo de payloads XSS (`<script ...>`)
-  - Bloqueo de patrones de RCE en campos sensibles (`cmd`, `exec`, etc.)
-  - Validacion SSRF en campos URL (`url`, `callback`, `webhook`, etc.)
-  - Sanitizacion de `req.body` y filtro de claves NoSQL injection (`$`, `.`)
-- Politica de cache (`Cache-Control`) en middleware global:
-  - `GET /news`, `GET /ticket`, `GET /track`: `public, max-age=60, stale-while-revalidate=30`
-  - Resto de respuestas: `no-store`
-
-## Flujo de Autenticacion
-
-```
-Cliente                          Backend                        MongoDB
-  |                                 |                               |
-  |--- POST /login ---------------->|                               |
-  |    { email, password }          |--- User.findOne({ email }) -->|
-  |                                 |<------------------------------|
-  |                                 |--- bcrypt.compare()           |
-  |                                 |--- createJWT({ userid })      |
-  |<-- 200 + cookie bearer ---------|                               |
-  |                                 |                               |
-  |--- POST /token/user ----------->|                               |
-  |    { bearer }                   |--- getuserJWT(token)          |
-  |                                 |--- User.findOne({ userid }) -->
-  |<-- 200 { userid, email, ... } --|                               |
-```
-
-## Notas
-
-- Si frontend y backend van en dominios distintos, configura CORS explicitamente
-- Ajusta el rate limit y TTL de cache por entorno (dev/prod)
-- Para entornos con CDN, puedes aumentar `max-age` en `/news` y reducirlo en `/track`
+- Hash de passwords con `bcryptjs`.
+- JWT firmado con `JWT_SECRET`.
+- Operaciones admin por `ADMIN_TOKEN`.
+- Headers y hardening global en middleware.
