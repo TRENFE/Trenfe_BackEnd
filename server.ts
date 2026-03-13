@@ -24,8 +24,6 @@ const app = express();
 const port = Deno.env.get("PORT") || 3000;
 const mongoUri = Deno.env.get("MONGO_URI") || "";
 
-app.use("/stripe", stripeRoutes);
-
 app.disable("x-powered-by"); // Disable for black-box security
 app.use(securityHeaders); // Global security headers
 app.use(apiRateLimiter); // Global rate limiter
@@ -35,6 +33,8 @@ app.use(requestSecurityGuards); // Custom middleware
 app.use(express.json({ limit: "16kb" })); // Limit JSON body size to prevent DoS
 app.use(express.urlencoded({ extended: false, limit: "16kb" })); // Limit URL-encoded body size
 
+
+app.use("/stripe", stripeRoutes);
 app.use("/user", userRoutes);
 app.use("/login", loginRoutes);
 app.use("/register", registerRoutes);
