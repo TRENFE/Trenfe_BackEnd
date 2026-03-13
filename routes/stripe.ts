@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import express, { Request, Response } from "express";
 import { User } from "../DB/user.ts";
 import { verifyJWT } from "../auth.ts";
+import { Ticket } from "../DB/tickets.ts";
 
 const router = express.Router();
 
@@ -20,6 +21,8 @@ router.post("/create", async (req: Request, res: Response) => {
     }
     const { amount, quantity, id } = req.body;
     const ticketID = atob(id)
+    const ticketInfo = await Ticket.findOne({ticketid:ticketID})
+    const finalPrice = ticketInfo?.price || amount
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -27,9 +30,9 @@ router.post("/create", async (req: Request, res: Response) => {
           price_data: {
             currency: "eur",
             product_data: {
-              name: name,
+              name: `BILLETE ${ticketInfo?.origin} -> ${ticketInfo?.destination}`,
             },
-            unit_amount: Math.round(amount * 100),
+            unit_amount: Math.round(finalPrice * 100),
           },
           quantity: quantity,
         },
