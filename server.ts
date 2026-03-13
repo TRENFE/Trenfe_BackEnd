@@ -17,12 +17,28 @@ import {
   requestSecurityGuards,
   securityHeaders,
 } from "./security.ts";
+import { Buffer } from "node:buffer";
 
 dotenv.config();
 
 const app = express();
 const port = Deno.env.get("PORT") || 3000;
 const mongoUri = Deno.env.get("MONGO_URI") || "";
+
+app.use(async (req: any, res: Response, next: any) => {
+  if (req.url === "/stripe/update") {
+    // Lee el body con la API nativa de Deno/Fetch
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of req) {
+      chunks.push(chunk);
+    }
+    const rawBody = Buffer.concat(chunks);
+    req.rawBody = rawBody;  // guárdalo en req.rawBody
+    req.body = rawBody;     // y también en req.body para Stripe
+    return next();
+  }
+  next();
+});
 
 app.disable("x-powered-by"); // Disable for black-box security
 app.use(securityHeaders); // Global security headers
