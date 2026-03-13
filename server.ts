@@ -29,9 +29,12 @@ app.use(securityHeaders); // Global security headers
 app.use(apiRateLimiter); // Global rate limiter
 app.use(cacheHeaders); // Global cache-control policy
 app.use(cookieParser());
+app.use(requestSecurityGuards); // Custom middleware
+
+app.use("/stripe/update", express.raw({ type: "application/json" }));
+
 app.use(express.json({ limit: "16kb" })); // Limit JSON body size to prevent DoS
 app.use(express.urlencoded({ extended: false, limit: "16kb" })); // Limit URL-encoded body size
-app.use(requestSecurityGuards); // Custom middleware
 
 app.use("/user", userRoutes);
 app.use("/login", loginRoutes);
