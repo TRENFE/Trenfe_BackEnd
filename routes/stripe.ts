@@ -39,10 +39,10 @@ router.post("/create", async (req: Request, res: Response) => {
       ],
       mode: "payment",
       success_url: `https://renfe-frontend.sergioom9.deno.net/tickets/success/${
-        btoa(id)
+        btoa(ticketID)
       }`,
       cancel_url: `https://renfe-frontend.sergioom9.deno.net/tickets/fail/${
-        btoa(id)
+        btoa(ticketID)
       }`,
       metadata: {
       ticketid: ticketID,
