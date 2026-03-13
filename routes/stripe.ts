@@ -3,7 +3,6 @@ import express, { Request, Response } from "express";
 import { User } from "../DB/user.ts";
 import { verifyJWT } from "../auth.ts";
 import { Ticket } from "../DB/tickets.ts";
-import { Buffer } from "node:buffer";
 
 const router = express.Router();
 
@@ -59,15 +58,9 @@ router.post("/create", async (req: Request, res: Response) => {
 
 router.post("/update", async (req: Request, res: Response) => {
   try {
-    const sig = req.headers["stripe-signature"] as string;
-    const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
-    const event = await stripe.webhooks.constructEventAsync(JSON.stringify(req.body), sig, endpointSecret);
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
-
-      const { ticketid, userid, quantity } = session.metadata!;
       const PORT = Deno.env.get("PORT") ?? "3000";
-
+      const session = req.body?.data?.object;
+      const { ticketid, userid, quantity } = session.metadata!;
       const internalRes = await fetch(`http://127.0.0.1:${PORT}/ticket/sell`, {
         method: "POST",
         headers: {
@@ -81,10 +74,7 @@ router.post("/update", async (req: Request, res: Response) => {
         return res.status(400).json({ error: "Webhook Error" });
       }
       return res.status(200).json({ success: "OK" });
-    }
-    return res.status(200).json({ success: "OK" });
-
-  } catch (err) {
+    } catch (err) {
     console.log(err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
