@@ -58,19 +58,12 @@ router.post("/create", async (req: Request, res: Response) => {
 
 router.post("/update", async (req: Request, res: Response) => {
   try {
-    const sig = req.headers["stripe-signature"] as string;
-    const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
-    const event: Stripe.Event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      endpointSecret,
-    );
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
-
-      const { ticketid, userid, quantity } = session.metadata!;
+    //const sig = req.headers["stripe-signature"] as string;
+    //const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
+      const data= await req.json();
+      console.log(data)
       const PORT = Deno.env.get("PORT") ?? "3000";
-      const internalRes = await fetch(`http://127.0.0.1:${PORT}/ticket/sell`, {
+      /*const internalRes = await fetch(`http://127.0.0.1:${PORT}/ticket/sell`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -86,8 +79,7 @@ router.post("/update", async (req: Request, res: Response) => {
         console.log("Failed updating DB");
         return res.status(400).json({ "error": "Webhook Error" });
       }
-      return res.status(200).json({ success: "OK" });
-    }
+      return res.status(200).json({ success: "OK" });}*/
     return res.status(200).json({ success: "OK" });
   } catch (_err: Error | unknown) {
     return res.status(500).json({ error: "Internal Server Error" });
