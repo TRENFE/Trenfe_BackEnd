@@ -32,14 +32,9 @@ app.use(securityHeaders); // Global security headers
 app.use(apiRateLimiter); // Global rate limiter
 app.use(cacheHeaders); // Global cache-control policy
 app.use(cookieParser());
-app.use(requestSecurityGuards); // Custom middleware
+//app.use(requestSecurityGuards); // Custom middleware
 app.use(express.json({ limit: "16kb" })); // Limit JSON body size to prevent DoS
 app.use(express.urlencoded({ extended: false, limit: "16kb" })); // Limit URL-encoded body size
-
-app.use((req: Request, res: Response, next: any) => {
-  if (req.url.includes("/stripe/update")) return next();
-  return requestSecurityGuards(req, res, next);
-});
 
 app.use("/user", userRoutes);
 app.use("/login", loginRoutes);
