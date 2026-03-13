@@ -61,7 +61,7 @@ router.post("/update", async (req: Request, res: Response) => {
   try {
     const sig = req.headers["stripe-signature"] as string;
     const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
-    const event = await stripe.webhooks.constructEventAsync(req.body, sig, endpointSecret);
+    const event = await stripe.webhooks.constructEventAsync(JSON.stringify(req.body), sig, endpointSecret);
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
@@ -85,7 +85,7 @@ router.post("/update", async (req: Request, res: Response) => {
     return res.status(200).json({ success: "OK" });
 
   } catch (err) {
-    console.log("❌ Error general:", err);
+    console.log(err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });
