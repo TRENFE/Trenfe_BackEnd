@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import express, { Request, Response } from "express";
 import { User } from "../DB/user.ts";
-import {verifyJWT} from "../auth.ts"
+import { verifyJWT } from "../auth.ts";
 
 const router = express.Router();
 
@@ -10,11 +10,16 @@ const stripe = new Stripe(Deno.env.get("STRIPE_PRIVATE_KEY")!);
 router.post("/create", async (req: Request, res: Response) => {
   try {
     const isUser = await verifyJWT(req.cookies.bearer);
-    if(isUser==null){return res.status(404).json({ error: "User Token Not Valid" })};
+    if (isUser == null) {
+      return res.status(404).json({ error: "User Token Not Valid" });
+    }
     const userID = isUser.userid;
-    const userExists = await User.findOne({userid : userID})
-    if(!userExists){return res.status(404).json({ error: "User Token Not Valid" })}
+    const userExists = await User.findOne({ userid: userID });
+    if (!userExists) {
+      return res.status(404).json({ error: "User Token Not Valid" });
+    }
     const { amount, name, quantity, id } = req.body;
+    const ticketID = atob(id).split("+")[0]
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -30,14 +35,61 @@ router.post("/create", async (req: Request, res: Response) => {
         },
       ],
       mode: "payment",
-      success_url: `https://renfe-frontend.sergioom9.deno.net/tickets/success/${btoa(id)}`,
-      cancel_url: `https://renfe-frontend.sergioom9.deno.net/tickets/fail/${btoa(id)}`,
+      success_url: `https://renfe-frontend.sergioom9.deno.net/tickets/success/${
+        btoa(id)
+      }`,
+      cancel_url: `https://renfe-frontend.sergioom9.deno.net/tickets/fail/${
+        btoa(id)
+      }`,
+      metadata: {
+      ticketid: ticketID,
+      userid: userExists.userid,
+      quantity: String(quantity),
+    },
     });
-    return res.status(200).json({Payment_url:session.url})
+    return res.status(200).json({ Payment_url: session.url });
   } catch (err: Error | unknown) {
-    console.log(err)
+    console.log(err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-export default router
+router.post("/update", async (req: Request, res: Response) => {
+  try {
+    const sig = req.headers["stripe-signature"] as string;
+    const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
+    const event: Stripe.Event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      endpointSecret,
+    );
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+
+      const { ticketid, userid, quantity } = session.metadata!;
+      const PORT = Deno.env.get("PORT") ?? "3000";
+      const internalRes = await fetch(`http://127.0.0.1:${PORT}/ticket/sell`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": Deno.env.get("ADMIN_TOKEN")!,
+        },
+        body: JSON.stringify({
+          userid,
+          ticketid,
+          quantity,
+        }),
+      });
+      if (!internalRes.ok) {
+        console.log("Failed updating DB");
+        return res.status(400).json({ "error": "Webhook Error" });
+      }
+      return res.status(200).json({ success: "OK" });
+    }
+    return res.status(200).json({ success: "OK" });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+export default router;
