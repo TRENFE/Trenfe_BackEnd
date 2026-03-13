@@ -25,19 +25,28 @@ const app = express();
 const port = Deno.env.get("PORT") || 3000;
 const mongoUri = Deno.env.get("MONGO_URI") || "";
 
-app.use(async (req: any, res: Response, next: any) => {
+app.use(async (req: any, res: any, next: any) => {
   if (req.url === "/stripe/update") {
-    // Lee el body con la API nativa de Deno/Fetch
     const chunks: Uint8Array[] = [];
     for await (const chunk of req) {
       chunks.push(chunk);
     }
     const rawBody = Buffer.concat(chunks);
-    req.rawBody = rawBody;  // guárdalo en req.rawBody
-    req.body = rawBody;     // y también en req.body para Stripe
+    req.rawBody = rawBody; 
+    req.body = rawBody; // Stripe needs the Buffer here
     return next();
   }
   next();
+});
+
+app.use((req, res, next) => {
+  if (req.url === "/stripe/update") return next();
+  express.json({ limit: "16kb" })(req, res, next);
+});
+
+app.use((req, res, next) => {
+  if (req.url === "/stripe/update") return next();
+  express.urlencoded({ extended: false, limit: "16kb" })(req, res, next);
 });
 
 app.disable("x-powered-by"); // Disable for black-box security
