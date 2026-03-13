@@ -57,7 +57,7 @@ router.post("/create", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/update",express.raw({type: 'application/json'}), async (req: Request, res: Response) => {
+router.post("/update", async (req: Request, res: Response) => {
   try {
     console.log("🔔 Webhook recibido");
     console.log("Body:", req.body);
