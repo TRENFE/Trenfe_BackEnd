@@ -12,9 +12,9 @@ router.get("/", async (_req: Request, res: Response) => {
     if (cached) return res.status(200).json(cached);
     const news: NewsType[] = await News.find().select("-__v -_id");
     setCache("news:all", news, 60);
-    res.status(200).json(news);
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(200).json(news);
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -34,9 +34,9 @@ router.get("/:newid", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Not found" });
     }
     setCache(`news:${newid}`, uniquenew, 60);
-    res.status(200).json(uniquenew);
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(200).json(uniquenew);
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -65,9 +65,9 @@ router.post("/create", async (req: Request, res: Response) => {
     await news.save();
     clearCache("news:all");
     setCache(`news:${news.newid}`, news, 60);
-    res.status(200).json({ success: "OK", newid: news.newid });
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(200).json({ success: "OK", newid: news.newid });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -98,9 +98,9 @@ router.put("/", async (req: Request, res: Response) => {
       clearCache("news:all");
       return res.status(200).json({ success: "OK", newid: newid });
     }
-    res.status(404).json({ error: "Not found" });
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(404).json({ error: "Not found" });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -122,9 +122,9 @@ router.delete("/:newid", async (req: Request, res: Response) => {
       clearCache(`news:${newid}`);
       return res.status(200).json({ success: "OK", newid: newid });
     }
-    res.status(404).json({ error: "Not Found" });
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(404).json({ error: "Not Found" });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

@@ -36,3 +36,15 @@ export type TrackingType = {
   ActualY: number;
   speed: number;
 };
+
+export type TicketEmailData = {
+  email: string;
+  userid:string;
+  name: string;
+  ticketid: string;
+  date: string;
+  price: number;
+  origen: string;
+  destino: string;
+  uniqueID: string;
+};

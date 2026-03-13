@@ -4,9 +4,9 @@ import { TicketType } from "../types.ts";
 import { User } from "../DB/user.ts";
 import { checkAuth } from "../auth.ts";
 import { clearCache, getCache, setCache } from "../cache.ts";
+import { sendEmail } from "../util.ts";
 
 const router = express.Router();
-
 
 router.get("/", async (_req: Request, res: Response) => {
   try {
@@ -14,12 +14,11 @@ router.get("/", async (_req: Request, res: Response) => {
     if (cached) return res.status(200).json(cached);
     const tickets: TicketType[] = await Ticket.find().select("-__v -_id");
     setCache("tickets:all", tickets, 60);
-    res.status(200).json(tickets);
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error : " + err.message });
+    return res.status(200).json(tickets);
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 router.get("/:ticketid", async (req: Request, res: Response) => {
   try {
@@ -36,12 +35,11 @@ router.get("/:ticketid", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Not Found" });
     }
     setCache(`tickets:${ticketid}`, ticket, 60);
-    res.status(200).json(ticket);
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error : " + err.message });
+    return res.status(200).json(ticket);
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error"});
   }
 });
-
 
 router.post("/create", async (req: Request, res: Response) => {
   try {
@@ -84,12 +82,11 @@ router.post("/create", async (req: Request, res: Response) => {
     if (!createTracking.ok) {
       return res.status(409).json({ error: "Tracking creation failed" });
     }
-    res.status(200).json({ success: "OK", ticketid: ticket.ticketid });
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error : " + err.message });
+    return res.status(200).json({ success: "OK", ticketid: ticket.ticketid });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 router.post("/sell", async (req: Request, res: Response) => {
   try {
@@ -124,43 +121,61 @@ router.post("/sell", async (req: Request, res: Response) => {
         },
       );
       if (!deleteTracking.ok) {
-        res.status(409).json({ error: "Tracking deletion failed" });
+        return res.status(409).json({ error: "Tracking deletion failed" });
       }
       ticket.available = ticket.available - quantity;
       const coinsGained = (parseInt(ticket.price) / 10 * quantity).toString();
       user.coins = (parseInt(user.coins) + parseInt(coinsGained)).toString();
       await ticket.save();
       await user.save();
-      res.status(200).json({
+      const emailConfirmation = await sendEmail(
+        user.userid,
+        ticket.ticketid,
+        quantity,
+      );
+      let text = "";
+      emailConfirmation
+        ? text = "Ticket enviado correctamente"
+        : text = "Error al enviar Ticket";
+      console.log(text);
+      clearCache(`tickets:${ticket.ticketid}`);
+      clearCache("tickets:all");
+      return res.status(200).json({
         success: "OK",
         ticketid: ticket.ticketid,
         userid: user.userid,
         quantity: quantity,
         coinsGained: coinsGained,
       });
-      clearCache(`tickets:${ticket.ticketid}`);
-      clearCache("tickets:all");
-      return;
     }
     ticket.available = ticket.available - quantity;
     const coinsGained = (parseInt(ticket.price) / 10 * quantity).toString();
     user.coins = (parseInt(user.coins) + parseInt(coinsGained)).toString();
     await ticket.save();
     await user.save();
+    const emailConfirmation = await sendEmail(
+      user.userid,
+      ticket.ticketid,
+      quantity,
+    );
+    let text = "";
+    emailConfirmation
+      ? text = "Ticket enviado correctamente"
+      : text = "Error al enviar Ticket";
+    console.log(text);
     clearCache("tickets:all");
     setCache(`tickets:${ticketid}`, ticket, 60);
-    res.status(200).json({
+    return res.status(200).json({
       success: "OK",
       ticketid: ticket.ticketid,
       userid: user.userid,
       quantity: quantity,
       coinsGained: coinsGained,
     });
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error :" + err.message });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 router.put("/", async (req: Request, res: Response) => {
   try {
@@ -194,12 +209,11 @@ router.put("/", async (req: Request, res: Response) => {
     });
     setCache(`tickets:${req.body.ticketid}`, { ...ticket, ...req.body }, 60);
     clearCache("tickets:all");
-    res.status(200).json({ success: "OK", ticketid: req.body.ticketid });
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error : " + err.message });
+    return res.status(200).json({ success: "OK", ticketid: req.body.ticketid });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 router.delete("/:ticketid", async (req: Request, res: Response) => {
   try {
@@ -220,9 +234,9 @@ router.delete("/:ticketid", async (req: Request, res: Response) => {
     await Ticket.deleteOne({ ticketid });
     clearCache(`tickets:${ticketid}`);
     clearCache("tickets:all");
-    res.status(200).json({ success: "OK", ticketid: ticketid });
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error :" + err.message });
+    return res.status(200).json({ success: "OK", ticketid: ticketid });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

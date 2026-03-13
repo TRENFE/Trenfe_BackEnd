@@ -10,7 +10,7 @@ router.post("/", async (req: Request, res: Response) => {
         if(req.body.userid==null || req.body.name==null || req.body.email==null|| req.body.password==null){
             return res.status(400).json({ error: "Missing Params" });
         }
-        if(!req.body.email.toString().includes("@")){res.status(500).json({ error: "El email parece invalido" });}
+        if(!req.body.email.toString().includes("@")){return res.status(500).json({ error: "El email parece invalido" });}
         const hashedPassword = await bcrypt.hash(req.body.password,10);
         const user = new User({
             userid: req.body.userid,
@@ -28,8 +28,8 @@ router.post("/", async (req: Request, res: Response) => {
          "Set-Cookie": `bearer=${token}; Secure; Path=/; SameSite=Strict`,
          "Content-Type": "application/json",
           }).status(200).json({success:"OK",userid:user.userid});
-    } catch (err: Error | any) {
-        res.status(500).json({ error: "Internal Server Error" });
+    } catch (err: Error | unknown) {
+        return res.status(500).json({ error: "Internal Server Error" });
     }
 });
 

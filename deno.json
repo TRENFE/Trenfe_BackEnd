@@ -16,6 +16,9 @@
     "helmet": "npm:helmet@^8.1.0",
     "mongoose": "npm:mongoose@^8.19.1",
     "bcryptjs": "npm:bcryptjs",
-    "jose": "npm:jose@^6.1.0"
+    "jose": "npm:jose@^6.1.0",
+    "nodemailer": "npm:nodemailer@^8.0.2",
+    "qrcode": "npm:qrcode@^1.5.4",
+    "stripe": "npm:stripe@^20.4.1"
   }
 }

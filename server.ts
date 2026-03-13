@@ -9,6 +9,7 @@ import newsRoutes from "./routes/news.ts";
 import cookieParser from "cookie-parser";
 import tokenRoutes from "./routes/token.ts";
 import trackRoutes from "./routes/track.ts";
+import stripeRoutes from "./routes/stripe.ts"
 import { updateTrainPositions } from "./util.ts";
 import {
   apiRateLimiter,
@@ -39,13 +40,13 @@ app.use("/ticket", ticketRoutes);
 app.use("/news", newsRoutes);
 app.use("/token", tokenRoutes);
 app.use("/track", trackRoutes);
+app.use("/stripe", stripeRoutes);
 
 mongoose.connect(mongoUri)
   .then(() => {
     console.log("Conectado a MongoDB");
     app.listen(port, () => console.log(`Servidor en http://localhost:${port}`));
 
-    // Simulate train movement
     updateTrainPositions();
     setInterval(updateTrainPositions, 1 * 60 * 1000);
   })

@@ -27,7 +27,7 @@ export async function verifyJWT(token: string): Promise<JWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, secret);
     return payload;
-  } catch (error: any) {
+  } catch (_err: Error | unknown) {
     return null;
   }
 }

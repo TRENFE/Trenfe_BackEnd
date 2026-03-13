@@ -16,9 +16,9 @@ router.get("/", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     const users: UserType[] = await User.find().select("-password -__v -_id");
-    res.status(200).json(users);
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(200).json(users);
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -43,9 +43,9 @@ router.get("/:userid", async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({ error: "Not found" });
     }
-    res.status(200).json(user);
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(200).json(user);
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -68,9 +68,9 @@ router.delete("/:userid", async (req: Request, res: Response) => {
     if (deletedUser) {
       return res.status(200).json({ message: "User Deleted" });
     }
-    res.status(404).json({ error: "Not found" });
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(404).json({ error: "Not found" });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -110,9 +110,9 @@ router.put("/", async (req: Request, res: Response) => {
         coins: coins,
       },
     );
-    res.status(200).json({ message: "User Updated Succesfully" });
-  } catch (err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(200).json({ message: "User Updated Succesfully" });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

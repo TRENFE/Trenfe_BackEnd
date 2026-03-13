@@ -35,7 +35,7 @@ router.post("/", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing params" });
     }
     if (!req.body.email.toString().includes("@")) {
-      res.status(500).json({ error: "El email parece invalido" });
+      return res.status(500).json({ error: "El email parece invalido" });
     }
     const email = req.body.email;
     const user = await User.findOne({ email });
@@ -57,8 +57,8 @@ router.post("/", async (req: Request, res: Response) => {
       "Set-Cookie": `bearer=${token}; Secure; Path=/; SameSite=Strict`,
       "Content-Type": "application/json",
     }).status(200).json({ success: "OK", userid: user.userid });
-  } catch (_err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -123,7 +123,7 @@ router.post("/google", async (req: Request, res: Response) => {
       "Set-Cookie": `bearer=${token}; Secure; Path=/; SameSite=Strict`,
       "Content-Type": "application/json",
     }).status(200).json({ success: "OK", userid: user.userid });
-  } catch (_err: Error | any) {
+  } catch (_err: Error | unknown) {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });

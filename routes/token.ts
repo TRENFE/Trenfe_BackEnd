@@ -20,8 +20,8 @@ router.post("/", async (req: Request, res: Response) => {
          "Set-Cookie": `bearer=${tkn}; Secure; Path=/; SameSite=Strict`,
          "Content-Type": "application/json",
           }).status(200).json({success:"OK",bearer:tkn});
-        } catch (err: Error | any) {
-        res.status(500).json({ error: "Internal Server Error" });
+        } catch (_err: Error | unknown) {
+        return res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
@@ -38,8 +38,8 @@ router.post("/user", async (req: Request, res: Response) => {
          "Set-Cookie": `bearer=${tkn}; Secure; Path=/; SameSite=Strict`,
          "Content-Type": "application/json",
           }).status(200).json({userid:user.userid,email:user.email,coins:user.coins,name:user.name});
-        } catch (err: Error | any) {
-        res.status(500).json({ error: "Internal Server Error" });
+        } catch (_err: Error | unknown) {
+        return res.status(500).json({ error: "Internal Server Error" });
     }
 });
 

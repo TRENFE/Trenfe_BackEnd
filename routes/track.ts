@@ -3,6 +3,7 @@ import { Tracking } from "../DB/track.ts";
 import { TrackingType } from "../types.ts";
 import { clearCache, getCache, setCache } from "../cache.ts";
 import { safeCityName, safeId } from "../security.ts";
+import { json } from "node:stream/consumers";
 
 const router = express.Router();
 
@@ -21,9 +22,9 @@ router.get("/:ticketid", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Train not found" });
     }
     setCache(`track:${ticketid}`, train, 60);
-    res.status(200).json(train);
-  } catch (_err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(200).json(train);
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -38,9 +39,9 @@ router.get("/", async (_req: Request, res: Response) => {
       return res.status(404).json({ error: "Train not found" });
     }
     setCache("track:all", train, 60);
-    res.status(200).json(train);
-  } catch (_err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(200).json(train);
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -64,9 +65,9 @@ router.delete("/:ticketid", async (req: Request, res: Response) => {
     }
     clearCache(`track:${ticketid}`);
     clearCache("track:all");
-    res.status(200).json(train);
-  } catch (_err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(200).json(train);
+  } catch (_err: Error | unknown) {
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -135,9 +136,9 @@ router.post("/create", async (req: Request, res: Response) => {
     await newTrain.save();
     setCache(`track:${ticketid}`, newTrain, 60);
     clearCache("track:all");
-    res.status(201).json(newTrain);
-  } catch (_err: Error | any) {
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(201).json(newTrain);
+  } catch (_err: Error | unknown) {
+   return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
