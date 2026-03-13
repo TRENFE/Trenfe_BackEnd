@@ -59,27 +59,11 @@ router.post("/create", async (req: Request, res: Response) => {
 
 router.post("/update", async (req: Request, res: Response) => {
   try {
-    console.log("🔔 Webhook recibido");
-    console.log("Body:", req.body);
-    console.log("Body es Buffer:", Buffer.isBuffer(req.body));
-    console.log("Stripe-Signature:", req.headers["stripe-signature"] ?? "❌ AUSENTE");
-    console.log("Webhook Secret:", Deno.env.get("STRIPE_WEBHOOK_SECRET") ? "✅ presente" : "❌ AUSENTE");
-
     const sig = req.headers["stripe-signature"] as string;
     const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
-
-    let event: Stripe.Event;
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-      console.log("✅ Evento verificado:", event.type);
-    } catch (sigErr) {
-      console.log("❌ Firma inválida:", sigErr);
-      return res.status(400).json({ error: "Webhook signature failed" });
-    }
-
+    const event = await stripe.webhooks.constructEventAsync(req.body, sig, endpointSecret);
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      console.log("Metadata:", session.metadata);
 
       const { ticketid, userid, quantity } = session.metadata!;
       const PORT = Deno.env.get("PORT") ?? "3000";
@@ -93,18 +77,11 @@ router.post("/update", async (req: Request, res: Response) => {
         body: JSON.stringify({ userid, ticketid, quantity }),
       });
 
-      const internalBody = await internalRes.text();
-      console.log("✅ /ticket/sell status:", internalRes.status, internalBody);
-
       if (!internalRes.ok) {
-        console.log("❌ Failed updating DB");
         return res.status(400).json({ error: "Webhook Error" });
       }
-
       return res.status(200).json({ success: "OK" });
     }
-
-    console.log("Evento ignorado:", event.type);
     return res.status(200).json({ success: "OK" });
 
   } catch (err) {
