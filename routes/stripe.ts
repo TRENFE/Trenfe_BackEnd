@@ -18,7 +18,7 @@ router.post("/create", async (req: Request, res: Response) => {
     if (!userExists) {
       return res.status(404).json({ error: "User Token Not Valid" });
     }
-    const { amount, name, quantity, id } = req.body;
+    const { amount, quantity, id } = req.body;
     const ticketID = atob(id).split("+")[0]
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
