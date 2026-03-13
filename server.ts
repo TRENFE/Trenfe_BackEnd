@@ -24,6 +24,8 @@ const app = express();
 const port = Deno.env.get("PORT") || 3000;
 const mongoUri = Deno.env.get("MONGO_URI") || "";
 
+app.use("/stripe", stripeRoutes);
+
 app.disable("x-powered-by"); // Disable for black-box security
 app.use(securityHeaders); // Global security headers
 app.use(apiRateLimiter); // Global rate limiter
@@ -40,7 +42,7 @@ app.use("/ticket", ticketRoutes);
 app.use("/news", newsRoutes);
 app.use("/token", tokenRoutes);
 app.use("/track", trackRoutes);
-app.use("/stripe", stripeRoutes);
+
 
 mongoose.connect(mongoUri)
   .then(() => {
