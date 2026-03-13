@@ -29,13 +29,13 @@ app.disable("x-powered-by");
 app.use(cookieParser());
 app.use(apiRateLimiter);
 app.use(cacheHeaders);
+app.use(express.json({ limit: "16kb" })); // Limit JSON body size to prevent DoS
+app.use(express.urlencoded({ extended: false, limit: "16kb" })); // Limit URL-encoded body size
 
 app.use("/stripe", stripeRoutes);
 
 app.use(securityHeaders); // Global security headers
 app.use(requestSecurityGuards); // Custom middleware
-app.use(express.json({ limit: "16kb" })); // Limit JSON body size to prevent DoS
-app.use(express.urlencoded({ extended: false, limit: "16kb" })); // Limit URL-encoded body size
 
 app.use("/user", userRoutes);
 app.use("/login", loginRoutes);
