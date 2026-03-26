@@ -49,6 +49,7 @@ router.post("/", async (req: Request, res: Response) => {
       if (user.intentos <= 0) {
         return res.status(404).json({ error: "Anti-BrutteForce Triggered" });
       }
+      return res.status(404).json({error:"Incorrect data"})
     }
     user.intentos = 3;
     await user.save();
