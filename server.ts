@@ -17,7 +17,6 @@ import {
   requestSecurityGuards,
   securityHeaders,
 } from "./security.ts";
-import { Buffer } from "node:buffer";
 
 dotenv.config();
 

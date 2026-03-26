@@ -6,7 +6,7 @@ export const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   coins: { type: String, required: true, default: "0"},
-  intentos: { type: Number, required: true, default: 3 },
+  intentos: { type: Number, required: true, default: 4 },
 });
 
 export const User = mongoose.model("User", userSchema);

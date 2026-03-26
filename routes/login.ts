@@ -51,7 +51,7 @@ router.post("/", async (req: Request, res: Response) => {
       }
       return res.status(404).json({error:"Incorrect data"})
     }
-    user.intentos = 3;
+    user.intentos = 4;
     await user.save();
     const token = await createJWT({ userid: user.userid });
     res.set({
